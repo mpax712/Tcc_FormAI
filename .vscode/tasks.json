@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "sqlproj: Build form",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"/home/romulo/Documents/Tcc_FormAI/form/form.sqlproj"
+			],
+			"problemMatcher": "$sqlproj-problem-matcher",
+			"isBackground": true,
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "Builds the form SQL project"
+		}
+	]
+}
