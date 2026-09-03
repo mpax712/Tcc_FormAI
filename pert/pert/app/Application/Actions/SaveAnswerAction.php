@@ -20,7 +20,7 @@ class SaveAnswerAction
                 throw new DomainException('Esta entrega nao aceita mais alteracoes.');
             }
             $hasExtension = $locked->reopened_until?->isFuture() ?? false;
-            if ($locked->activity_id !== $question->activity_id || (now()->greaterThan($locked->activity->deadline_at) && ! $hasExtension)) {
+            if ($locked->activity_id !== $question->activity_id || ($locked->activity->deadline_at && now()->greaterThan($locked->activity->deadline_at) && ! $hasExtension)) {
                 throw new DomainException('A atividade foi encerrada.');
             }
 

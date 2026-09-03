@@ -1,21 +1,41 @@
 <?php
 
-use App\Infrastructure\Observability\Models\SystemHeartbeat;
-use Illuminate\Support\Facades\Schedule;
+use App\Application\Actions\CancelExpiredAiGradingRunsAction;
 use App\Domain\Activities\Enums\ActivityStatus;
 use App\Domain\Activities\Models\Activity;
+use App\Domain\Grading\Enums\GradingRunStatus;
+use App\Domain\Grading\Models\GradingRun;
 use App\Domain\Identity\Models\User;
+use App\Domain\Submissions\Models\Submission;
+use App\Infrastructure\Observability\Models\SystemHeartbeat;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 
 Schedule::call(function () {
     SystemHeartbeat::query()->updateOrCreate(['name' => 'scheduler'], ['last_seen_at' => now(), 'metadata' => ['host' => gethostname() ?: 'unknown']]);
 })->everyMinute()->name('scheduler-heartbeat')->withoutOverlapping();
 
-Schedule::command('queue:work database --queue=ai,default --stop-when-empty --max-time=50 --tries=3 --timeout=60')
+Schedule::command('queue:work database --queue=ai,default --stop-when-empty --max-time=50 --tries=2 --timeout=40')
     ->everyMinute()->name('short-lived-queue-worker')->withoutOverlapping();
 
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('model:prune')->daily();
+
+Schedule::call(function () {
+    $timeout = (int) config('formai.grading_timeout_seconds', 300);
+    $submissionIds = GradingRun::query()
+        ->whereIn('status', [GradingRunStatus::Pending, GradingRunStatus::Processing, GradingRunStatus::RetryableFailed])
+        ->where('created_at', '<=', now()->subSeconds($timeout))
+        ->with('answer:id,submission_id')
+        ->get()
+        ->pluck('answer.submission_id')
+        ->filter()
+        ->unique();
+
+    Submission::query()->whereKey($submissionIds->all())->each(
+        fn (Submission $submission) => app(CancelExpiredAiGradingRunsAction::class)->execute($submission)
+    );
+})->everyMinute()->name('cancel-expired-ai-grading')->withoutOverlapping();
 
 Schedule::call(function () {
     Activity::query()->where('status', ActivityStatus::Published->value)->where('deadline_at', '<=', now())->each(function (Activity $activity) {

@@ -1,3 +1,106 @@
+# FormAI
+
+Sistema de atividades escolares com correção objetiva automática e sugestão de correção por IA para respostas dissertativas. Toda nota sugerida pela IA precisa ser revisada e confirmada pelo professor antes da publicação.
+
+## Configuração da IA
+
+O provedor ativo é o Gemini. A integração com a OpenAI permanece disponível no código, mas está inativa enquanto `AI_PROVIDER=gemini`.
+
+### Gemini (ativo)
+
+1. Crie uma chave no [Google AI Studio](https://aistudio.google.com/apikey).
+2. No arquivo `.env`, configure:
+
+```env
+AI_PROVIDER=gemini
+GEMINI_API_KEY=sua_chave_do_gemini
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+GEMINI_GRADING_MODEL=gemini-3.7-flash
+GEMINI_CONNECT_TIMEOUT=5
+GEMINI_TIMEOUT=30
+GEMINI_MAX_OUTPUT_TOKENS=1200
+GEMINI_TEMPERATURE=0.2
+FORM_AI_GRADING_TIMEOUT_SECONDS=300
+```
+
+3. Recarregue as configurações:
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+Nunca coloque a chave em arquivos JavaScript, templates Blade, commits ou capturas de tela.
+
+O sistema usa a API REST `POST /v1beta/models/{modelo}:generateContent`, autenticação pelo cabeçalho `x-goog-api-key` e resposta estruturada por JSON Schema. Cada chamada possui timeout de 30 segundos; falhas temporárias são repetidas pela fila uma única vez. Consulte a [referência oficial da Gemini API](https://ai.google.dev/api) e a documentação de [saídas estruturadas](https://ai.google.dev/gemini-api/docs/structured-output).
+
+### OpenAI (alternativa inativa)
+
+O adaptador `OpenAiGradingProvider` e suas configurações continuam preservados. Para reativá-lo futuramente, configure:
+
+```env
+AI_PROVIDER=openai
+OPENAI_API_KEY=sua_chave_de_projeto
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_GRADING_MODEL=gpt-5.6-terra
+OPENAI_REASONING_EFFORT=low
+OPENAI_TIMEOUT=45
+OPENAI_MAX_OUTPUT_TOKENS=1200
+```
+
+Depois, execute novamente `php artisan config:clear`. A implementação continua usando a [Responses API da OpenAI](https://developers.openai.com/api/reference/resources/responses/methods/create), sem armazenamento da resposta no provedor.
+
+## Fila de correção
+
+No desenvolvimento local, inicie a aplicação com:
+
+```bash
+composer dev
+```
+
+Esse comando mantém servidor, fila e agendador ativos. O agendador fecha atividades expiradas, registra o heartbeat do sistema e também executa um worker curto de contingência.
+
+Com XAMPP/Apache, se não usar `composer dev`, mantenha estes comandos abertos em terminais separados:
+
+```bash
+php artisan queue:work database --queue=ai,default --tries=2 --timeout=40
+php artisan schedule:work
+```
+
+Em produção, configure um worker supervisionado e o agendador do Laravel. Apenas iniciar o Apache não processa a fila de correção.
+
+O endpoint `/health` informa `ai: configured` quando a chave foi carregada e `ai: manual_only` quando o sistema está operando apenas com correção manual. Ele também informa o estado do agendador e o atraso da fila.
+
+### Certificados SSL no Windows/XAMPP
+
+O PHP usado pelo Apache e o PHP usado no terminal podem carregar arquivos `php.ini` diferentes. Confira cada instalação com `php --ini` e com a tela `phpinfo()` do Apache. Em ambas, `curl.cainfo` e `openssl.cafile` devem apontar para um pacote de certificados CA existente e atualizado. Depois de alterar o `php.ini` do XAMPP, reinicie o Apache. O erro `cURL error 60` indica que essa validação de certificado falhou; nunca contorne o problema desativando a verificação SSL.
+
+## Fluxo da correção
+
+1. O aluno envia todas as respostas.
+2. Questões objetivas são corrigidas localmente.
+3. Nenhuma correção por IA é iniciada automaticamente com a entrega.
+4. Na página da atividade, antes de abrir a entrega, o professor escolhe `Corrigir com IA` ou `Corrigir manualmente`.
+5. Durante a correção manual, o professor também pode selecionar `Corrigir esta questão com IA` em uma resposta dissertativa específica.
+6. Somente depois dessa escolha o servidor cria o job na fila `ai` e envia os textos necessários ao provedor configurado, solicitando saída estruturada por JSON Schema.
+7. A sugestão de nota, critérios, evidências e feedback aparece na tela de correção.
+8. O professor pode aceitar ou alterar tudo antes de salvar e publicar.
+
+Ao criar uma questão dissertativa, o professor pode informar uma resposta esperada e critérios de correção em pontos. Quando houver critérios, seus pontos devem totalizar exatamente a pontuação da questão (por exemplo, `6` e `4` em uma questão de `10` pontos). Um prompt geral opcional da atividade orienta a IA em todas as respostas dissertativas.
+
+Se a chave estiver ausente ou a API falhar depois das tentativas configuradas, a entrega continua disponível para correção manual.
+
+## Verificação
+
+```bash
+php artisan migrate
+php artisan test
+```
+
+Depois de iniciar a fila, envie uma resposta dissertativa de teste e confira a tela do professor. Não existe upload de PDF, imagem, áudio ou outros anexos para a IA nesta versão; somente texto é enviado.
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

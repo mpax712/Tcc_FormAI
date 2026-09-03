@@ -4,13 +4,15 @@ namespace App\Providers;
 
 use App\Domain\Grading\Contracts\AiGradingProvider;
 use App\Domain\Identity\Models\User;
+use App\Infrastructure\AI\GeminiGradingProvider;
 use App\Infrastructure\AI\OpenAiGradingProvider;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +20,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(AiGradingProvider::class, function () {
             return match (config('formai.ai_provider')) {
-                'openai' => new OpenAiGradingProvider(),
+                'gemini' => new GeminiGradingProvider,
+                'openai' => new OpenAiGradingProvider,
                 default => throw new \RuntimeException('Provedor de IA nao configurado.'),
             };
         });
@@ -26,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        DevCommands::artisan('schedule:work', 'scheduler');
+        DevCommands::artisan('queue:listen database --queue=ai,default --tries=2 --timeout=40', 'queue');
+        DevCommands::except('vite');
         Paginator::useBootstrapFive();
         Gate::before(fn (User $user) => $user->isAdmin() ? true : null);
 

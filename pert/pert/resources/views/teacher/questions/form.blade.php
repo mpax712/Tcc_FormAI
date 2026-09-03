@@ -102,14 +102,14 @@
                             type="number"
                             step="0.01"
                             min="0"
-                            max="1"
-                            placeholder="Peso"
+                            max="1000"
+                            placeholder="Pontos"
                             value="{{ old("rubric.$index.weight", $isEditing ? optional($question->rubricCriteria->get($index))->weight : ($index === 0 ? 1 : '')) }}"
                         >
                     </div>
                 </div>
             @endforeach
-            <div class="form-text">Os pesos dos critérios preenchidos devem somar 1,00.</div>
+            <div class="form-text">Os pontos dos critérios devem somar exatamente a pontuação da questão.</div>
         </section>
 
         <button class="btn btn-primary" type="submit">Salvar questão</button>

@@ -21,11 +21,13 @@ class PublishActivityAction
             if (! $classroom) {
                 throw new DomainException('Reative a turma antes de publicar esta atividade.');
             }
-            if (! $locked->deadline_at?->isFuture()) {
+            if ($locked->deadline_at && ! $locked->deadline_at->isFuture()) {
                 throw new DomainException('Defina um prazo futuro antes de publicar esta atividade.');
             }
             $questions = $locked->questions()->get();
-            if ($questions->isEmpty()) throw new DomainException('Adicione ao menos uma pergunta antes de publicar.');
+            if ($questions->isEmpty()) {
+                throw new DomainException('Adicione ao menos uma pergunta antes de publicar.');
+            }
 
             $sourceIds = $questions->pluck('source_question_id')->filter()->unique()->values();
             $sources = Question::query()

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', $activity->title.' · FormAI')
 @section('content')
-<div class="mb-4"><h1>{{ $activity->title }}</h1><p>{{ $activity->description }}</p><div class="alert alert-warning">Prazo: {{ $activity->deadline_at->format('d/m/Y H:i') }}. Depois do envio, somente o professor pode reabrir.</div></div>
+<div class="mb-4"><h1>{{ $activity->title }}</h1><p>{{ $activity->description }}</p><div class="alert alert-warning">{{ $activity->deadline_at ? 'Prazo: '.$activity->deadline_at->format('d/m/Y H:i').'.' : 'Esta atividade não possui prazo de entrega.' }} Depois do envio, somente o professor pode reabrir.</div></div>
 @php($answers=$submission->answers->keyBy('activity_question_id'))
 @foreach($activity->questions as $question)@php($answer=$answers->get($question->id))
 <form class="card question-card p-4 mb-4" method="post" action="{{ route('student.answers.save',[$submission,$question]) }}" data-autosave>@csrf @method('PUT')<input type="hidden" name="version" value="{{ $answer?->version ?? 0 }}"><h2 class="h5">{{ $question->position }}. {{ $question->body }}</h2><p class="text-secondary">Vale {{ $question->max_score }} pontos</p>

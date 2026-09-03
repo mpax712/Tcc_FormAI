@@ -20,7 +20,7 @@
             <span class="preview-draft-badge">Prévia do rascunho</span>
         </div>
         <div class="preview-metadata">
-            <div><span class="preview-meta-icon" aria-hidden="true">◷</span><span><small>Prazo de entrega</small><strong>{{ $activity->deadline_at->format('d/m/Y · H:i') }}</strong></span></div>
+            <div><span class="preview-meta-icon" aria-hidden="true">◷</span><span><small>Prazo de entrega</small><strong>{{ $activity->deadline_at?->format('d/m/Y · H:i') ?? 'Sem prazo' }}</strong></span></div>
             <div><span class="preview-meta-icon" aria-hidden="true">#</span><span><small>Quantidade</small><strong>{{ $activity->questions->count() }} {{ $activity->questions->count() === 1 ? 'questão' : 'questões' }}</strong></span></div>
             <div><span class="preview-meta-icon" aria-hidden="true">★</span><span><small>Valor total</small><strong>{{ number_format((float) $activity->total_score, 2, ',', '.') }} pontos</strong></span></div>
         </div>

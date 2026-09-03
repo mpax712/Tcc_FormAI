@@ -24,7 +24,7 @@ class PromptComposer
         return implode("\n\n", [
             '<question>'.strip_tags($request->question).'</question>',
             '<expected_answer>'.strip_tags($request->expectedAnswer).'</expected_answer>',
-            '<rubric>'.json_encode($request->rubric, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).'</rubric>',
+            '<rubric>'.json_encode($request->effectiveRubric(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).'</rubric>',
             '<teacher_addendum>'.$teacherInstruction.'</teacher_addendum>',
             '<untrusted_student_answer>'.strip_tags($request->studentAnswer).'</untrusted_student_answer>',
             '<maximum_score>'.$request->maximumScore.'</maximum_score>',

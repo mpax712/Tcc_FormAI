@@ -1,5 +1,69 @@
 const token = document.querySelector('meta[name="csrf-token"]')?.content;
 
+document.querySelectorAll('[data-ai-submit]').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const linkedButton = form.id ? document.querySelector(`[form="${CSS.escape(form.id)}"]`) : null;
+        const button = form.querySelector('button[type="submit"]') || linkedButton;
+        if (!button) return;
+        button.disabled = true;
+        button.classList.add('is-ai-loading');
+        const label = button.querySelector('[data-button-label]');
+        if (label) label.textContent = form.dataset.aiLabel || 'Aguarde...';
+        button.insertAdjacentHTML('afterbegin', '<span class="ai-spinner ai-spinner-button" aria-hidden="true"></span>');
+        button.setAttribute('aria-busy', 'true');
+    });
+});
+
+document.querySelectorAll('[data-ai-tracker]').forEach((tracker) => {
+    const progress = tracker.querySelector('[data-ai-progress]');
+    const errorPanel = tracker.querySelector('[data-ai-error]');
+    const message = tracker.querySelector('[data-ai-message]');
+    let polling = true;
+
+    const showFailure = (failureMessage) => {
+        polling = false;
+        progress?.classList.add('d-none');
+        if (!errorPanel) return;
+        errorPanel.classList.remove('d-none');
+        const detail = errorPanel.querySelector('[data-ai-error-message]');
+        if (detail) detail.textContent = failureMessage;
+    };
+
+    const checkStatus = async () => {
+        if (!polling || document.hidden) return;
+        try {
+            const response = await fetch(tracker.dataset.statusUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store',
+            });
+            if (!response.ok) throw new Error('Não foi possível consultar o andamento da correção.');
+            const data = await response.json();
+            if (message) {
+                const count = data.requested ? ` (${data.processed} de ${data.requested})` : '';
+                message.textContent = `${data.message}${count}`;
+            }
+            if (data.state === 'failed') {
+                showFailure(data.errors?.map((error) => error.message).join(' · ') || data.message);
+            } else if (data.state === 'completed') {
+                polling = false;
+                progress?.classList.add('is-complete');
+                const title = progress?.querySelector('[data-ai-title]');
+                if (title) title.textContent = 'Correção da IA concluída';
+                setTimeout(() => window.location.reload(), 900);
+            }
+        } catch (error) {
+            showFailure(`${error.message} Atualize a página para tentar novamente; a correção manual continua disponível.`);
+        }
+    };
+
+    checkStatus();
+    const interval = window.setInterval(() => {
+        if (!polling) return window.clearInterval(interval);
+        checkStatus();
+    }, 2500);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkStatus(); });
+});
+
 document.querySelectorAll('[data-autosave]').forEach((form) => {
     let timer;
     const status = form.querySelector('[data-save-status]');
@@ -101,9 +165,31 @@ document.querySelectorAll('[data-activity-builder]').forEach((form) => {
         if (kindLabel) kindLabel.textContent = type === 'essay' ? 'Questão dissertativa' : 'Questão de alternativa';
     };
 
+    const updateRubricSummary = (card) => {
+        const maximum = Number(card.querySelector('[name$="[max_score]"]')?.value || 0);
+        const points = [...card.querySelectorAll('[data-rubric-points]')];
+        const total = points.reduce((sum, input) => sum + Number(input.value || 0), 0);
+        const remaining = maximum - total;
+        points.forEach((input) => { input.max = String(maximum || 1000); });
+        const summary = card.querySelector('[data-rubric-summary]');
+        if (!summary) return;
+        if (points.every((input) => input.value === '')) {
+            summary.textContent = 'Sem critérios: a IA fará uma avaliação geral da resposta.';
+            summary.className = 'form-text';
+            return;
+        }
+        summary.textContent = Math.abs(remaining) < 0.001
+            ? `Total: ${total.toFixed(2)} pontos — rubrica completa.`
+            : `Total: ${total.toFixed(2)} pontos · ${Math.abs(remaining).toFixed(2)} ${remaining > 0 ? 'restantes' : 'acima do limite'}.`;
+        summary.className = `form-text ${Math.abs(remaining) < 0.001 ? 'text-success' : 'text-danger'}`;
+    };
+
     const initializeCard = (card) => {
         toggleKind(card);
+        updateRubricSummary(card);
         card.querySelector('[data-question-type]')?.addEventListener('change', () => toggleKind(card));
+        card.querySelector('[name$="[max_score]"]')?.addEventListener('input', () => updateRubricSummary(card));
+        card.querySelectorAll('[data-rubric-points]').forEach((input) => input.addEventListener('input', () => updateRubricSummary(card)));
         card.querySelector('[data-remove-question]')?.addEventListener('click', () => {
             card.remove();
             refresh();

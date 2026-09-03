@@ -25,13 +25,13 @@ class QuestionManagementTest extends TestCase
             ->assertSee('rubric[2][weight]', false);
     }
 
-    public function test_teacher_creates_essay_with_normalized_rubric(): void
+    public function test_teacher_creates_essay_with_point_based_rubric(): void
     {
         $teacher = User::factory()->teacher()->create();
         $this->actingAs($teacher)->post(route('teacher.questions.store'), [
             'type' => 'essay', 'body' => 'Explique o tema.', 'expected_answer' => 'Uma explicacao esperada.',
             'max_score' => 10,
-            'rubric' => [['label' => 'Conceito', 'description' => 'Dominio conceitual', 'weight' => 0.7], ['label' => 'Clareza', 'description' => 'Texto claro', 'weight' => 0.3]],
+            'rubric' => [['label' => 'Conceito', 'description' => 'Dominio conceitual', 'weight' => 7], ['label' => 'Clareza', 'description' => 'Texto claro', 'weight' => 3]],
             'options' => [['text' => '']],
         ])->assertRedirect(route('teacher.questions.index'));
 

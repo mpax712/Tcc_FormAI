@@ -19,9 +19,18 @@ class SaveActivityDraftAction
         return DB::transaction(function () use ($activity, $teacher, $data): Activity {
             if ($activity) {
                 $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
-                $activity->ensureDraft();
                 if ($activity->teacher_id !== $teacher->id) {
                     throw new DomainException('A atividade não pertence a este professor.');
+                }
+
+                if ($activity->submissions()->exists()) {
+                    $activity->update(Arr::only($data, ['title', 'description', 'grading_instructions', 'deadline_at']));
+
+                    if ($activity->status === ActivityStatus::Closed && (! $activity->deadline_at || $activity->deadline_at->isFuture())) {
+                        $activity->update(['status' => ActivityStatus::Published]);
+                    }
+
+                    return $activity->fresh(['classroom', 'questions']);
                 }
             }
 
@@ -41,9 +50,13 @@ class SaveActivityDraftAction
             }
 
             if ($activity) {
-                $activity->update(Arr::only($data, ['classroom_id', 'title', 'description', 'deadline_at']));
+                $activity->update(Arr::only($data, ['classroom_id', 'title', 'description', 'grading_instructions', 'deadline_at']));
+
+                if ($activity->status === ActivityStatus::Closed && (! $activity->deadline_at || $activity->deadline_at->isFuture())) {
+                    $activity->update(['status' => ActivityStatus::Published]);
+                }
             } else {
-                $activity = $classroom->activities()->create(Arr::only($data, ['title', 'description', 'deadline_at']) + [
+                $activity = $classroom->activities()->create(Arr::only($data, ['title', 'description', 'grading_instructions', 'deadline_at']) + [
                     'teacher_id' => $teacher->id,
                     'status' => ActivityStatus::Draft,
                 ]);
@@ -95,8 +108,8 @@ class SaveActivityDraftAction
                 $rubric = $type === QuestionType::Essay
                     ? collect($payload['rubric'] ?? [])->filter(fn ($criterion) => filled($criterion['label'] ?? null))->values()->map(fn ($criterion) => [
                         'label' => trim($criterion['label']),
-                        'description' => trim($criterion['description']),
-                        'weight' => (float) $criterion['weight'],
+                        'description' => trim((string) ($criterion['description'] ?? '')),
+                        'weight' => (float) ($criterion['weight'] ?? 0),
                     ])->all()
                     : [];
 

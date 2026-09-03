@@ -1,6 +1,19 @@
 <?php
 
 return [
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+        'model' => env('GEMINI_GRADING_MODEL', 'gemini-3.7-flash'),
+        'connect_timeout' => (int) env('GEMINI_CONNECT_TIMEOUT', 5),
+        'timeout' => (int) env('GEMINI_TIMEOUT', 30),
+        'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 1200),
+        'temperature' => (float) env('GEMINI_TEMPERATURE', 0.2),
+        'input_usd_per_mtok' => (float) env('GEMINI_INPUT_USD_PER_MTOK', 0),
+        'output_usd_per_mtok' => (float) env('GEMINI_OUTPUT_USD_PER_MTOK', 0),
+    ],
+
+    // Provedor OpenAI preservado como alternativa. Para reativar, use AI_PROVIDER=openai.
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),

@@ -2,12 +2,12 @@
 
 namespace App\Application\Actions;
 
+use App\Domain\Activities\Enums\ActivityStatus;
 use App\Domain\Grading\Models\GradingDecision;
 use App\Domain\Identity\Models\User;
 use App\Domain\QuestionBank\Enums\QuestionType;
 use App\Domain\Submissions\Enums\SubmissionStatus;
 use App\Domain\Submissions\Models\Submission;
-use App\Domain\Activities\Enums\ActivityStatus;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -47,9 +47,10 @@ class ReviewSubmissionAction
                 ->whereIn('answer_id', $locked->answers->pluck('id'))->sum('score');
             $locked->update(['status' => SubmissionStatus::Reviewed, 'reviewed_at' => now(), 'final_score' => $finalScore]);
             $hasPendingReview = Submission::query()->where('activity_id', $locked->activity_id)->whereIn('status', [SubmissionStatus::Submitted, SubmissionStatus::Processing])->exists();
-            if (! $hasPendingReview && $locked->activity->deadline_at->isPast()) {
+            if (! $hasPendingReview && ($locked->activity->deadline_at?->isPast() ?? false)) {
                 $locked->activity->update(['status' => ActivityStatus::ReviewReady]);
             }
+
             return $locked->fresh();
         });
     }

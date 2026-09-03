@@ -20,7 +20,7 @@ class SubmitActivityAction
             }
             $hasExtension = $locked->reopened_until?->isFuture() ?? false;
             if (! in_array($locked->activity->status, [ActivityStatus::Published, ActivityStatus::Closed, ActivityStatus::Grading], true)
-                || (now()->greaterThan($locked->activity->deadline_at) && ! $hasExtension)) {
+                || ($locked->activity->deadline_at && now()->greaterThan($locked->activity->deadline_at) && ! $hasExtension)) {
                 throw new DomainException('O prazo desta atividade terminou.');
             }
 
@@ -37,11 +37,18 @@ class SubmitActivityAction
                 ->where('type', QuestionType::SingleChoice)
                 ->sum(function ($question) use ($answers) {
                     $correct = collect($question->options_snapshot)->firstWhere('is_correct', true);
+
                     return ($answers->get($question->id)?->selected_option_key === ($correct['key'] ?? null)) ? (float) $question->max_score : 0;
                 });
 
-            $locked->update(['status' => SubmissionStatus::Submitted, 'submitted_at' => now(), 'reopened_until' => null, 'objective_score' => $objectiveScore]);
-            return $locked->fresh();
+            $locked->update([
+                'status' => SubmissionStatus::Submitted,
+                'submitted_at' => now(),
+                'reopened_until' => null,
+                'objective_score' => $objectiveScore,
+            ]);
+
+            return $locked->fresh(['answers.activityQuestion']);
         });
     }
 }

@@ -6,6 +6,8 @@
         : collect($options)->search(fn ($option) => (bool) ($option['is_correct'] ?? false));
     if ($correctOption === false) $correctOption = 0;
     while (count($options) < 4) $options[] = [];
+    $rubric = array_values($question['rubric'] ?? []);
+    while (count($rubric) < 3) $rubric[] = [];
 @endphp
 
 <article class="activity-question-builder activity-question-glass" data-question-card>
@@ -29,6 +31,34 @@
         <div class="col-sm-5 col-lg-2">
             <label class="form-label" for="question-{{ $index }}-score">Pontos</label>
             <input class="form-control" id="question-{{ $index }}-score" name="questions[{{ $index }}][max_score]" type="number" min="0.01" max="1000" step="0.01" value="{{ $question['max_score'] ?? 1 }}" required>
+        </div>
+    </div>
+
+    <div class="question-kind-panel mt-3" data-essay-fields @if($type !== 'essay') hidden @endif>
+        <div class="mb-3">
+            <label class="form-label" for="question-{{ $index }}-expected">Resposta esperada <span class="text-secondary fw-normal">(opcional)</span></label>
+            <textarea class="form-control" id="question-{{ $index }}-expected" name="questions[{{ $index }}][expected_answer]" rows="3" maxlength="10000" placeholder="Descreva os pontos que uma boa resposta deve apresentar.">{{ $question['expected_answer'] ?? '' }}</textarea>
+        </div>
+        <div>
+            <div class="mb-2"><strong>Critérios de correção</strong> <span class="text-secondary">(opcional)</span></div>
+            <p class="form-text mt-0">Preencha os critérios desejados. Quando usados, a soma dos pontos deve ser igual à pontuação da questão.</p>
+            @foreach($rubric as $criterionIndex => $criterion)
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <label class="visually-hidden" for="question-{{ $index }}-criterion-{{ $criterionIndex }}-label">Nome do critério</label>
+                        <input class="form-control" id="question-{{ $index }}-criterion-{{ $criterionIndex }}-label" name="questions[{{ $index }}][rubric][{{ $criterionIndex }}][label]" maxlength="120" placeholder="Ex.: Clareza" value="{{ $criterion['label'] ?? '' }}">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="visually-hidden" for="question-{{ $index }}-criterion-{{ $criterionIndex }}-description">Descrição do critério</label>
+                        <input class="form-control" id="question-{{ $index }}-criterion-{{ $criterionIndex }}-description" name="questions[{{ $index }}][rubric][{{ $criterionIndex }}][description]" maxlength="3000" placeholder="O que deve ser avaliado" value="{{ $criterion['description'] ?? '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="visually-hidden" for="question-{{ $index }}-criterion-{{ $criterionIndex }}-weight">Pontos</label>
+                        <input class="form-control" id="question-{{ $index }}-criterion-{{ $criterionIndex }}-weight" name="questions[{{ $index }}][rubric][{{ $criterionIndex }}][weight]" type="number" min="0.01" max="1000" step="0.01" placeholder="Pontos" value="{{ $criterion['weight'] ?? '' }}" data-rubric-points>
+                    </div>
+                </div>
+            @endforeach
+            <div class="form-text" data-rubric-summary aria-live="polite"></div>
         </div>
     </div>
 

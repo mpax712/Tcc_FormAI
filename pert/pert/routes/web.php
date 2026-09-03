@@ -64,10 +64,13 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::patch('turmas/{classroom}/solicitacoes/{student}/aprovar', [MembershipRequestController::class, 'approve'])->name('classrooms.requests.approve');
             Route::delete('turmas/{classroom}/solicitacoes/{student}', [MembershipRequestController::class, 'reject'])->name('classrooms.requests.reject');
             Route::resource('questoes', QuestionController::class)->parameters(['questoes' => 'question'])->except('show')->names('questions');
-            Route::resource('atividades', ActivityController::class)->parameters(['atividades' => 'activity'])->except('destroy')->names('activities');
+            Route::resource('atividades', ActivityController::class)->parameters(['atividades' => 'activity'])->names('activities');
             Route::get('atividades/{activity}/visualizar', [ActivityController::class, 'preview'])->name('activities.preview');
             Route::post('atividades/{activity}/publicar', [ActivityController::class, 'publish'])->name('activities.publish');
             Route::get('entregas/{submission}/corrigir', [GradingController::class, 'show'])->name('grading.show');
+            Route::get('entregas/{submission}/status-da-ia', [GradingController::class, 'aiStatus'])->name('grading.ai-status');
+            Route::post('entregas/{submission}/corrigir-com-ia', [GradingController::class, 'generateAll'])->middleware('throttle:ai')->name('grading.ai-all');
+            Route::post('entregas/{submission}/respostas/{answer}/corrigir-com-ia', [GradingController::class, 'generateOne'])->middleware('throttle:ai')->name('grading.ai-answer');
             Route::put('entregas/{submission}/revisar', [GradingController::class, 'review'])->name('grading.review');
             Route::post('entregas/{submission}/publicar', [GradingController::class, 'release'])->name('grading.release');
             Route::post('entregas/{submission}/reabrir', [GradingController::class, 'reopen'])->name('grading.reopen');
